@@ -1,16 +1,25 @@
-FROM grycap/elixir
+FROM elixir:alpine
 
-WORKDIR /opt/slork
-COPY . ./
+ENV BUILD_ARGS="LIBS=-lcurses dungeon LIBDIR=/usr/local/lib BINDIR=/usr/local/bin"
+WORKDIR /tmp/slork/zork
+COPY . ../
 
-RUN install_packages build-essential git && \
-    cd zork && \
-    make && \
-    make install && \
+RUN apk add --update --no-cache \
+      gcc \
+      git \
+      g++ \
+      make \
+      ncurses-dev \
+      --virtual .builddeps && \
+    make $BUILD_ARGS && \
+    mkdir -p /usr/games/lib && \
+    make $BUILD_ARGS install && \
     cd .. && \
-    mix deps.get --force && \
-    mix escript.build && \
-    ./slork !map && \
-    rm -rf zork /tmp/* /var/tmp/*
+    yes | mix deps.get && \
+    yes | mix escript.build && \
+    mv slork /usr/local/bin && \
+    apk del .builddeps && \
+    rm -rf /tmp/* /var/tmp/* /root/.mix
 
-ENTRYPOINT ["/opt/slork/slork"]
+
+ENTRYPOINT ["/usr/local/bin/slork", "--zork-dir", "/usr/local/bin"]
